@@ -1,0 +1,239 @@
+# A fresh start, so check for updates
+$ sudo apt-get update
+$ sudo apt-get upgrade
+/*************************************************************************************************************/
+The OpenCV software uses other third party software libraries. Install these first. Some come with the Jetson Tegra operating system, others you may already have installed. Better to be safe than sorry, so here's the full list. Only the latest packages are installed according to the procedure.
+The installation will take up an additional 800 MByte on your disk, if not already present.
+
+# reveal the CUDA location
+$ sudo sh -c "echo '/usr/local/cuda/lib64' >> /etc/ld.so.conf.d/nvidia-tegra.conf"
+$ sudo ldconfig
+# third-party libraries
+$ sudo apt-get install build-essential cmake git unzip pkg-config zlib1g-dev
+$ sudo apt-get install libjpeg-dev libjpeg8-dev libjpeg-turbo8-dev
+$ sudo apt-get install libpng-dev libtiff-dev libglew-dev
+$ sudo apt-get install libavcodec-dev libavformat-dev libswscale-dev
+$ sudo apt-get install libgtk2.0-dev libgtk-3-dev libcanberra-gtk*
+$ sudo apt-get install python-dev python-numpy python-pip
+$ sudo apt-get install python3-dev python3-numpy python3-pip
+$ sudo apt-get install libxvidcore-dev libx264-dev libgtk-3-dev
+$ sudo apt-get install libtbb2 libtbb-dev libdc1394-22-dev libxine2-dev
+$ sudo apt-get install gstreamer1.0-tools libgstreamer-plugins-base1.0-dev
+$ sudo apt-get install libgstreamer-plugins-good1.0-dev
+$ sudo apt-get install libv4l-dev v4l-utils v4l2ucp qv4l2
+$ sudo apt-get install libtesseract-dev libxine2-dev libpostproc-dev
+$ sudo apt-get install libavresample-dev libvorbis-dev
+$ sudo apt-get install libfaac-dev libmp3lame-dev libtheora-dev
+$ sudo apt-get install libopencore-amrnb-dev libopencore-amrwb-dev
+$ sudo apt-get install libopenblas-dev libatlas-base-dev libblas-dev
+$ sudo apt-get install liblapack-dev liblapacke-dev libeigen3-dev gfortran
+$ sudo apt-get install libhdf5-dev libprotobuf-dev protobuf-compiler
+$ sudo apt-get install libgoogle-glog-dev libgflags-dev
+
+/*************************************************************************************************************/
+L4T Multimedia API for ffmpeg
+
+1.build and install library
+git clone https://github.com/jocover/jetson-ffmpeg.git
+cd jetson-ffmpeg
+mkdir build
+cd build
+cmake ..
+make
+sudo make install
+sudo ldconfig
+
+2.patch ffmpeg and build
+
+git clone git://source.ffmpeg.org/ffmpeg.git -b release/4.2 --depth=1
+cd ffmpeg
+wget https://github.com/jocover/jetson-ffmpeg/raw/master/ffmpeg_nvmpi.patch
+git apply ffmpeg_nvmpi.patch
+./configure --enable-nvmpi
+make
+/*************************************************************************************************************/
+OpenGL Setup: Installing dependencies reference https://medium.com/geekculture/a-beginners-guide-to-setup-opengl-in-linux-debian-2bfe02ccd1e
+
+Before installing the required libraries, we’ll first have to install a few dependencies. So open your terminal and run the following commands:
+sudo apt-get update
+sudo apt-get install mesa-utils libglu1-mesa-dev freeglut3-dev mesa-common-dev
+sudo apt-get install libglew-dev libglfw3-dev libglm-dev
+sudo apt-get install libao-dev libmpg123-dev
+
+cd /usr/local/lib/
+sudo git clone https://github.com/glfw/glfw.git
+sudo cd glfw
+sudo cmake .
+sudo make
+sudo make install
+
+or
+
+$ sudo apt-get update
+$ sudo apt-get install libglu1-mesa-dev freeglut3-dev mesa-common-dev
+
+test program 
+
+#include <GL/glut.h>
+
+void displayMe(void)
+{
+    glClear(GL_COLOR_BUFFER_BIT);
+    glBegin(GL_POLYGON);
+        glVertex3f(0.5, 0.0, 0.5);
+        glVertex3f(0.5, 0.0, 0.0);
+        glVertex3f(0.0, 0.5, 0.0);
+        glVertex3f(0.0, 0.0, 0.5);
+    glEnd();
+    glFlush();
+}
+
+int main(int argc, char** argv)
+{
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_SINGLE);
+    glutInitWindowSize(400, 300);
+    glutInitWindowPosition(100, 100);
+    glutCreateWindow("Hello world!");
+    glutDisplayFunc(displayMe);
+    glutMainLoop();
+    return 0;
+}
+
+compilation 
+g++ main.cpp -o firstOpenGlApp -lglut -lGLU -lGL
+/*************************************************************************************************************/
+Intel Threaded Building Blocks
+
+git clone https://github.com/wjakob/tbb.git
+cd tbb/build
+cmake ..
+make -j
+sudo make install
+/*************************************************************************************************************/
+git clone https://github.com/davisking/dlib.git
+cd dlib
+mkdir build
+cd build
+cmake ..
+cmake --build . --config Release
+sudo make install
+sudo ldconfig
+/*************************************************************************************************************/
+Download OpenCV.
+When all third-party software is installed, OpenCV itself can be downloaded. There are two packages needed; the basic version and the additional contributions. After downloading, you can unzip the files. Please be aware of line wrapping in the text boxes. The two commands are starting with wget and ending with zip.
+
+# download the latest version
+$ cd ~
+$ wget -O opencv.zip https://github.com/opencv/opencv/archive/4.5.5.zip
+$ wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/4.5.5.zip
+# unpack
+$ unzip opencv.zip
+$ unzip opencv_contrib.zip
+# some administration to make live easier later on
+$ mv opencv-4.5.5 opencv
+$ mv opencv_contrib-4.5.5 opencv_contrib
+
+Build Make.
+Before we begin with the actual build of the library, there is one small step to go. You have to make a directory where all the build files can be located.
+$ cd ~/opencv
+$ mkdir build
+$ cd build
+
+cmake -D CMAKE_BUILD_TYPE=RELEASE \
+-D CMAKE_INSTALL_PREFIX=/usr \
+-D OPENCV_EXTRA_MODULES_PATH=/home/nvidia/opencv_contrib/modules \
+-D EIGEN_INCLUDE_PATH=/usr/include/eigen3 \
+-D WITH_OPENCL=OFF \
+-D WITH_CUDA=ON \
+-D CUDA_ARCH_BIN="7.2" \
+-D CUDA_ARCH_PTX="" \
+-D WITH_CUDNN=ON \
+-D CUDNN_VERSION='8.0.0.180' \
+-D WITH_CUBLAS=ON \
+-D ENABLE_FAST_MATH=ON \
+-D CUDA_FAST_MATH=ON \
+-D OPENCV_DNN_CUDA=ON \
+-D ENABLE_NEON=ON \
+-D WITH_LAPACK=ON \
+-D WITH_QT=ON \
+-D WITH_GTK=ON \
+-D WITH_OPENMP=ON \
+-D WITH_OPENGL=ON \
+-D BUILD_TIFF=ON \
+-D WITH_FFMPEG=ON \
+-D WITH_GSTREAMER=ON \
+-D WITH_TBB=ON \
+-D BUILD_TBB=ON \
+-D BUILD_TESTS=OFF \
+-D WITH_EIGEN=ON \
+-D WITH_V4L=ON \
+-D WITH_LIBV4L=ON \
+-D OPENCV_ENABLE_NONFREE=ON \
+-D INSTALL_C_EXAMPLES=OFF \
+-D INSTALL_PYTHON_EXAMPLES=OFF \
+-D BUILD_NEW_PYTHON_SUPPORT=ON \
+-D BUILD_opencv_python3=TRUE \
+-D OPENCV_GENERATE_PKGCONFIG=YES \
+-D BUILD_opencv_python2=ON \
+-D BUILD_opencv_python3=ON \
+-D BUILD_EXAMPLES=OFF ..
+
+make -j6
+sudo rm -r /usr/include/opencv4/opencv2
+sudo make install
+sudo ldconfig
+
+OpenCV will be installed to the /usr directory, all files will be copied to following locations:
+/usr/bin - executable files
+/usr/lib/aarch64-linux-gnu - libraries (.so)
+/usr/lib/aarch64-linux-gnu/cmake/opencv4 - cmake package
+/usr/include/opencv4 - headers
+/usr/share/opencv4 - other files (e.g. trained cascades in XML format)
+
+https://www.e-consystems.com/Articles/Camera/accessing_cameras_in_opencv_with_high_performance.asp
+
+for intsalling Curl library
+sudo apt-get install libcurl4-openssl-dev
+/****************************************************************************************************/
+For VNC Remote Desktop Installation
+
+# Make sure Debian is the latest and greatest
+apt-get update
+apt-get upgrade
+apt-get dist-upgrade
+
+# Install X, LXDE, VPN programs
+apt-get install xorg lxde-core tightvncserver
+
+# Start VNC to create config file
+tightvncserver :1
+
+# Then stop VNC
+tightvncserver -kill :1
+
+# Edit config file to start session with LXDE:
+gedit ~/.vnc/xstartup
+
+# Add this at the bottom of the file:
+lxterminal &
+/usr/bin/lxsession -s LXDE &
+
+# Restart VNC
+tightvncserver :1
+
+To Configure the Viewer to access your VPS at:xxx.xxx.xxx.xxx:5901
+/****************************************************************************************************/
+Out of Space in Jetson Boards
+A full OpenCV build can take up to 2GB of space. This is a lot for smaller platforms. 
+Here are some things I usually erase in order to make some space on NVIDIA Jetson boards: 
+#
+# Please double check you actually don't need these before purging
+#
+sudo apt purge chromium-browser
+sudo apt purge thunderbird*
+sudo apt purge libreoffice*
+
+# If you're not planning on using docker
+sudo apt purge docker*
+
