@@ -1,4 +1,4 @@
-# Nvidia-Xavier-DeepLearning-Installation
+# Nvidia-Rasberry-PI-Deep-Learning
 DeepLearning Framework Installation Steps
 
 Opencv Compilation
